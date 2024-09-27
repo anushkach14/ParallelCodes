@@ -1,0 +1,15 @@
+#include<stdio.h>
+#include<omp.h>
+#include<stdlib.h>
+
+int main(int argc, char *argv[]){
+	int numt;
+	int tid;
+	#pragma omp parallel num_threads(5)
+	{
+		tid=omp_get_thread_num();
+		numt=omp_get_num_threads();
+		printf("Hello world from %d of %d\n",tid,numt);
+	}
+	return 0;
+}
