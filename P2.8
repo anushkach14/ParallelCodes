@@ -1,0 +1,46 @@
+#include<stdio.h>
+#include<math.h>
+#include<omp.h>
+
+int armstrong(int num){
+	int orig=num;
+	int sum=0;
+	int digits=0;
+	
+	while(orig!=0){
+		orig /= 10;
+		digits++;
+	}
+	
+	orig=num;
+	
+	while (orig!=0){
+		int base=orig % 10;
+		sum += pow(base,digits);
+		orig /= 10;
+	}
+	return sum == num;
+}
+
+int main(){
+	int i;
+	int arr[3];
+	printf("Enter 3 integers: \n");
+	for(i=0;i<3;i++){
+		scanf("%d",&arr[i]);
+	}
+	
+	#pragma omp parallel for
+	for(i=0;i<3;i++){
+		if(armstrong(arr[i])){
+				printf("%d is an Armstrong number\n",arr[i]);
+			}
+		
+		else{
+				printf("%d is not Armstrong\n",arr[i]);
+			}
+		
+	}
+	
+	return 0;
+}
