@@ -1,36 +1,18 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <omp.h>
-
-#define ARRAY_SIZE 1000
-
-int main() {
-    int array[ARRAY_SIZE];
-   long long sum = 0;
-
-    srand(0);
-
-    for (int i = 0; i < ARRAY_SIZE; i++) {
-        array[i] = rand(); 
-    }
-
-    #pragma omp parallel
-    {
-        long long local_sum = 0;
-
-        #pragma omp for
-        for (int i = 0; i < ARRAY_SIZE; i++) {
-            local_sum+=array[i];
-            }
-
-
-        #pragma omp critical
-        {
-        	sum+=local_sum;	
-        }
+#include<stdio.h>
+#include<stdlib.h>
+#include<omp.h>
+int main(){
+	int arr[1000],sum=0;
+	int i;
+	for( i=0;i<1000;i++){
+		scanf("%d",&arr[i]);
 	}
-	  printf("Sum of elements of the array: %lld\n",sum);
-  
-    return 0;
+	
+	#pragma omp parallel for reduction(+ :sum)
+	for (i=0;i<1000;i++){
+		sum += arr[i];
+	}
+	
+	printf("Sum of array: %d",sum);
+	return 0;
 }
-
