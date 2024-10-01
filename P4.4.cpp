@@ -1,39 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
-
-#define ARRAY_SIZE 1000
-
-int main() {
-    int array[ARRAY_SIZE];
-    int max = 0;
-
-    srand(0);
-
-    for (int i = 0; i < ARRAY_SIZE; i++) {
-        array[i] = rand(); 
-    }
-
-    #pragma omp parallel
-    {
-        int local_max = 0;
-
-        #pragma omp for
-        for (int i = 0; i < ARRAY_SIZE; i++) {
-            if (array[i] > local_max) {
-                local_max = array[i];
-            }
-        }
-
-        #pragma omp critical
-        {
-            if (local_max > max) {
-                max = local_max;
-            }
-        }
-    }
-	  printf("Maximum value in the array: %d\n", max);
-  
-    return 0;
+int main(){
+	int arr[1000],max_val=0;
+	int i;
+	for( i=0;i<1000;i++){
+		arr[i]=rand() % 1000;
+	}
+	#pragma omp parallel for reduction(max: max_val)
+	for(i=0;i<1000;i++){
+		if (max_val<arr[i]){
+			max_val=arr[i];
+		}
+	}
+	printf("Maximum value is: %d",max_val);
+	
+	return 0;
 }
-
