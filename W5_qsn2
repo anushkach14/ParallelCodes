@@ -1,0 +1,81 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+#include <time.h>
+
+#define ARRAY_SIZE 10000000 
+
+
+void sequential_average(int array[], double *result) {
+    long long sum = 0;
+
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        sum += array[i];
+    }
+
+    *result = (double)sum / ARRAY_SIZE; 
+}
+
+
+void parallel_average(int array[], double *result, int num_threads) {
+    long long partial_sum = 0;
+
+    #pragma omp parallel for num_threads(num_threads) reduction(+:partial_sum)
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        partial_sum += array[i];
+    }
+
+    *result = (double)partial_sum / ARRAY_SIZE;
+}
+
+int main() {
+    int *array = (int *)malloc(ARRAY_SIZE * sizeof(int));
+    if (array == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        return 1;  
+    }
+
+    double result_seq, result_par;
+    double start_time, end_time;
+    double seq_time, par_time;
+    int thread_counts[] = {2, 4, 8}; 
+
+ 
+    srand((unsigned)time(NULL));
+
+  
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        array[i] = rand() % 100;
+    }
+
+
+    start_time = omp_get_wtime();
+    sequential_average(array, &result_seq);
+    end_time = omp_get_wtime();
+    seq_time = end_time - start_time;
+
+    printf("Sequential Average: %f, Time taken: %f seconds\n", result_seq, seq_time);
+
+  
+    for (int i = 0; i < sizeof(thread_counts) / sizeof(thread_counts[0]); i++) {
+        int num_threads = thread_counts[i];
+
+        start_time = omp_get_wtime();
+        parallel_average(array, &result_par, num_threads);
+        end_time = omp_get_wtime();
+        par_time = end_time - start_time;
+
+        printf("Parallel Average with %d threads: %f, Time taken: %f seconds\n",
+               num_threads, result_par, par_time);
+
+  
+        double speedup = seq_time / par_time;
+        double efficiency = speedup / num_threads;
+
+        printf("Speedup with %d threads: %f, Efficiency: %f\n", num_threads, speedup, efficiency);
+    }
+
+
+    free(array);
+    return 0;
+}
