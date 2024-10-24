@@ -1,0 +1,57 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+#include <time.h>
+
+#define ARRAY_SIZE 100000000 
+
+void sequential_sum(int *array, long long *result) {
+    *result = 0;
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        *result += array[i];
+    }
+}
+
+void parallel_sum(int *array, long long *result, int num_threads) {
+    *result = 0;
+    long long partial_sum = 0;
+
+    #pragma omp parallel for num_threads(num_threads) reduction(+:partial_sum)
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        partial_sum += array[i];
+    }
+    *result = partial_sum;
+}
+
+int main(int argc, char *argv[]) {
+    int *array = (int *)malloc(ARRAY_SIZE * sizeof(int));
+    long long result_seq, result_par;
+    double start_time, end_time;
+    int thread_counts[] = {2, 4, 8};
+
+  
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        array[i] = rand() % 100;  
+    }
+
+ 
+    start_time = omp_get_wtime();
+    sequential_sum(array, &result_seq);
+    end_time = omp_get_wtime();
+    printf("Sequential Sum: %lld, Time taken: %f seconds\n", result_seq, end_time - start_time);
+
+ 
+    for (int i = 0; i < sizeof(thread_counts) / sizeof(thread_counts[0]); i++) {
+        int num_threads = thread_counts[i];
+
+        start_time = omp_get_wtime();
+        parallel_sum(array, &result_par, num_threads);
+        end_time = omp_get_wtime();
+        
+        printf("Parallel Sum with %d threads: %lld, Time taken: %f seconds\n",
+               num_threads, result_par, end_time - start_time);
+    }
+
+    free(array);
+    return 0;
+}
