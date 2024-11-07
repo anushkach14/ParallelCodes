@@ -1,0 +1,65 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+
+// Sequential function to count occurrences of a target value
+int count_occurrences_sequential(int *arr, int size, int target) {
+    int count = 0;
+    for (int i = 0; i < size; i++) {
+        if (arr[i] == target) count++;
+    }
+    return count;
+}
+
+// Parallel function to count occurrences using OpenMP
+int count_occurrences_parallel(int *arr, int size, int target) {
+    int count = 0;
+    #pragma omp parallel for reduction(+:count)
+    for (int i = 0; i < size; i++) {
+        if (arr[i] == target) count++;
+    }
+    return count;
+}
+
+// Generate a random array with values between 0 and 9
+void generate_array(int *arr, int size) {
+    for (int i = 0; i < size; i++) {
+        arr[i] = rand() % 10;  // Random numbers between 0 and 9
+    }
+}
+
+int main() {
+    int size = 1000000;  // Array size
+    int target = 7;  // Target value to count
+
+    // Dynamically allocate memory for the array
+    int *arr = (int*)malloc(size * sizeof(int));
+    if (arr == NULL) {
+        printf("Memory allocation failed!\n");
+        return 1;
+    }
+
+    // Generate random data
+    generate_array(arr, size);
+
+    // Sequential counting
+    double start = omp_get_wtime();
+    int sequential_count = count_occurrences_sequential(arr, size, target);
+    double sequential_time = omp_get_wtime() - start;
+
+    // Parallel counting with 4 threads
+    omp_set_num_threads(4);
+    start = omp_get_wtime();
+    int parallel_count = count_occurrences_parallel(arr, size, target);
+    double parallel_time = omp_get_wtime() - start;
+
+    // Output results
+    printf("Sequential count: %d, Time: %.6f seconds\n", sequential_count, sequential_time);
+    printf("Parallel count: %d, Time: %.6f seconds\n", parallel_count, parallel_time);
+    printf("Speedup: %.2f\n", sequential_time / parallel_time);
+
+    // Free dynamically allocated memory
+    free(arr);
+
+    return 0;
+}
