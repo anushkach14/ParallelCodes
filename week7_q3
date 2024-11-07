@@ -1,0 +1,55 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <mpi.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size, total_sum = 0;
+    int *array = NULL;    // Full array on root process
+    int *sub_array = NULL; // Sub-array for each process
+    int n = 100;  // Size of the array (can be adjusted)
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // If rank 0, create and initialize the array
+    if (rank == 0) {
+        array = (int*)malloc(n * sizeof(int));
+        for (int i = 0; i < n; i++) {
+            array[i] = 1; // Initialize array with 1 for simplicity
+        }
+    }
+
+    // Calculate the number of elements each process will handle
+    int count = n / size;
+
+    // Allocate memory for sub-array on each process
+    sub_array = (int*)malloc(count * sizeof(int));
+
+    // Scatter the data from the root process to all processes
+    MPI_Scatter(array, count, MPI_INT, sub_array, count, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Each process computes the sum of its portion
+    int partial_sum = 0;
+    for (int i = 0; i < count; i++) {
+        partial_sum += sub_array[i];
+    }
+
+    // Gather all partial sums at root process
+    MPI_Gather(&partial_sum, 1, MPI_INT, &total_sum, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // If rank 0, calculate and print the total sum
+    if (rank == 0) {
+        for (int i = 0; i < size; i++) {
+            total_sum += ((int*)array)[i];  // Calculate total sum from partial sums
+        }
+        printf("Total sum: %d\n", total_sum);
+        free(array);
+    }
+
+    // Free the memory for the sub-array
+    free(sub_array);
+
+    MPI_Finalize();
+    return 0;
+}
