@@ -1,0 +1,56 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+#include <time.h>
+
+// Function to simulate the parallelizable work
+void parallelizable_work(int size) {
+    double sum = 0.0;
+    #pragma omp parallel for reduction(+:sum)
+    for (int i = 0; i < size; i++) {
+        sum += (double)i; // Some computation
+    }
+}
+
+// Function to simulate the sequential work
+void sequential_work(int size) {
+    double sum = 0.0;
+    for (int i = 0; i < size; i++) {
+        sum += (double)i; // Some computation
+    }
+}
+
+int main() {
+    int total_size = 100000000;  // Total size of the workload
+    int parallel_size = total_size * 0.7; // 70% parallelizable
+    int sequential_size = total_size * 0.3; // 30% sequential
+
+    // Measure time for mixed workload
+    double start_time, end_time;
+    
+    // Run with different number of threads
+    for (int threads = 1; threads <= 8; threads *= 2) {
+        omp_set_num_threads(threads);
+        
+        start_time = omp_get_wtime();
+
+        // Simulate the parallelizable work
+        parallelizable_work(parallel_size);
+        
+        // Simulate the sequential work (this part runs serially)
+        sequential_work(sequential_size);
+
+        end_time = omp_get_wtime();
+        double execution_time = end_time - start_time;
+        
+        // Calculate speedup based on Amdahl's Law
+        double Amdahl_speedup = 1.0 / ((1.0 - 0.7) + 0.7 / threads);
+
+        // Output results
+        printf("Threads: %d, Execution Time: %f seconds\n", threads, execution_time);
+        printf("Predicted Speedup (Amdahl's Law): %f\n", Amdahl_speedup);
+        printf("Actual Speedup: %f\n\n", (end_time - start_time) / execution_time);
+    }
+
+    return 0;
+}
