@@ -1,0 +1,74 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+
+// Sequential matrix multiplication function
+void matrix_multiply_sequential(int *A, int *B, int *C, int m, int k, int n) {
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            C[i * n + j] = 0;
+            for (int l = 0; l < k; l++) {
+                C[i * n + j] += A[i * k + l] * B[l * n + j];
+            }
+        }
+    }
+}
+
+// Parallel matrix multiplication using OpenMP (no collapse, uses reduction)
+void matrix_multiply_parallel(int *A, int *B, int *C, int m, int k, int n) {
+    #pragma omp parallel for
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            C[i * n + j] = 0;
+            // No collapse: perform accumulation of products in the inner loop
+            for (int l = 0; l < k; l++) {
+                C[i * n + j] += A[i * k + l] * B[l * n + j];
+            }
+        }
+    }
+}
+
+int main() {
+    int m = 1000, k = 1000, n = 1000; // Matrix size (adjust as needed)
+    
+    // Allocate memory for matrices
+    int *A = (int*)malloc(m * k * sizeof(int));
+    int *B = (int*)malloc(k * n * sizeof(int));
+    int *C = (int*)malloc(m * n * sizeof(int)); // For sequential result
+    int *C_parallel = (int*)malloc(m * n * sizeof(int)); // For parallel result
+
+    // Initialize matrices with 1's
+    for (int i = 0; i < m * k; i++) A[i] = 1;
+    for (int i = 0; i < k * n; i++) B[i] = 1;
+
+    double start_time, end_time;
+    
+    // Sequential matrix multiplication
+    start_time = omp_get_wtime();
+    matrix_multiply_sequential(A, B, C, m, k, n);
+    end_time = omp_get_wtime();
+    double seq_time = end_time - start_time;
+
+    // Parallel matrix multiplication with 2, 4, and 8 threads
+    for (int threads = 2; threads <= 8; threads *= 2) {
+        omp_set_num_threads(threads);
+        start_time = omp_get_wtime();
+        matrix_multiply_parallel(A, B, C_parallel, m, k, n);
+        end_time = omp_get_wtime();
+        double parallel_time = end_time - start_time;
+        
+        // Speedup and Efficiency calculation
+        double speedup = seq_time / parallel_time;
+        double efficiency = speedup / threads;
+        
+        printf("Threads: %d, Time: %f s, Speedup: %f, Efficiency: %f\n", threads, parallel_time, speedup, efficiency);
+    }
+
+    // Free allocated memory
+    free(A);
+    free(B);
+    free(C);
+    free(C_parallel);
+    
+    return 0;
+}
