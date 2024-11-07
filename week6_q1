@@ -1,16 +1,17 @@
 #include <omp.h>
 #include <stdio.h>
+#include <stdlib.h>  // Include for malloc/free
 
 int main() {
     int n = 1000000;
-    double array[n];
+    double *array = (double *)malloc(n * sizeof(double));  // Dynamically allocate array
     double sum_parallel = 0.0;
     double start_time, end_time;
     double first_parallel_time;
 
     // Initialize the array with values
     for (int i = 0; i < n; i++) {
-        array[i] = 1.0;  // You can set different values for testing
+        array[i] = 1.0;  // Set all values to 1.0 for simplicity
     }
 
     // Parallel computation with different numbers of threads
@@ -35,11 +36,13 @@ int main() {
         double speedup = first_parallel_time / parallel_time;
         double efficiency = speedup / num_threads;
 
+        // Output results
         printf("Parallel Sum with %d threads: %f\n", num_threads, sum_parallel);
         printf("Parallel Execution Time with %d threads: %f seconds\n", num_threads, parallel_time);
         printf("Speedup with %d threads (relative to 2 threads): %f\n", num_threads, speedup);
         printf("Efficiency with %d threads: %f\n\n", num_threads, efficiency);
     }
 
+    free(array);  // Free the dynamically allocated array
     return 0;
 }
