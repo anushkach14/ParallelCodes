@@ -1,0 +1,31 @@
+#include <stdio.h>
+#include <mpi.h>
+
+int main(int argc, char *argv[]) {
+    int rank;
+    char message[100];
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (rank == 0) {
+        // Process 0 sends a message to Process 1
+        snprintf(message, sizeof(message), "Hello from Process 0!");
+        MPI_Send(message, sizeof(message), MPI_CHAR, 1, 0, MPI_COMM_WORLD);
+        printf("Process 0 sent: %s\n", message);
+        
+        // Process 0 receives the modified message from Process 1
+        MPI_Recv(message, sizeof(message), MPI_CHAR, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        printf("Process 0 received: %s\n", message);
+    } else if (rank == 1) {
+        // Process 1 receives the message from Process 0, modifies it, and sends it back
+        MPI_Recv(message, sizeof(message), MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        printf("Process 1 received: %s\n", message);
+        snprintf(message, sizeof(message), "Modified by Process 1!");
+        MPI_Send(message, sizeof(message), MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+        printf("Process 1 sent: %s\n", message);
+    }
+
+    MPI_Finalize();
+    return 0;
+}
