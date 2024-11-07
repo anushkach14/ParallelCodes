@@ -1,0 +1,55 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+
+// Simple function to count occurrences of integers in an array
+void count_frequency(int *arr, int size, int *frequency, int max_value) {
+    #pragma omp parallel for
+    for (int i = 0; i < size; i++) {
+        #pragma omp atomic
+        frequency[arr[i]]++;  // Atomically increment frequency for each value in the array
+    }
+}
+
+void generate_array(int *arr, int size, int max_value) {
+    for (int i = 0; i < size; i++) {
+        arr[i] = rand() % max_value;  // Random value between 0 and max_value - 1
+    }
+}
+
+int main() {
+    int size = 1000000;  // Size of the array
+    int max_value = 10;  // Max value for integers (range 0 to max_value - 1)
+    int num_threads[] = {2, 4, 8};  // Different number of threads to test
+
+    int *arr = (int*)malloc(size * sizeof(int));  // Dynamically allocate memory for the array
+    int *frequency = (int*)calloc(max_value, sizeof(int));  // Frequency array initialized to 0
+
+    // Generate random values for the array
+    generate_array(arr, size, max_value);
+
+    // Test for different thread counts
+    for (int t = 0; t < 3; t++) {
+        omp_set_num_threads(num_threads[t]);
+
+        // Reset frequency array
+        for (int i = 0; i < max_value; i++) frequency[i] = 0;
+
+        // Start timing the parallel execution
+        double start = omp_get_wtime();
+        count_frequency(arr, size, frequency, max_value);
+        double end = omp_get_wtime();
+
+        // Print results
+        printf("\nUsing %d threads, Time: %.6f seconds\n", num_threads[t], end - start);
+        for (int i = 0; i < max_value; i++) {
+            printf("Value %d: %d occurrences\n", i, frequency[i]);
+        }
+    }
+
+    // Clean up
+    free(arr);
+    free(frequency);
+
+    return 0;
+}
