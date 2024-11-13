@@ -1,0 +1,66 @@
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define N 3  // Size of the matrix (N x N)
+
+void gaussian_elimination(double matrix[N][N + 1], int rank, int size) {
+    for (int i = 0; i < N; i++) {
+        if (i % size == rank) {
+            double pivot = matrix[i][i];
+            for (int j = i; j <= N; j++) {
+                matrix[i][j] /= pivot;
+            }
+        }
+        
+        MPI_Bcast(matrix[i], N + 1, MPI_DOUBLE, i % size, MPI_COMM_WORLD);
+        
+        for (int j = i + 1; j < N; j++) {
+            if (j % size == rank) {
+                double factor = matrix[j][i];
+                for (int k = i; k <= N; k++) {
+                    matrix[j][k] -= factor * matrix[i][k];
+                }
+            }
+        }
+    }
+}
+
+void back_substitution(double matrix[N][N + 1], double solution[N], int rank, int size) {
+    for (int i = N - 1; i >= 0; i--) {
+        if (i % size == rank) {
+            solution[i] = matrix[i][N];
+            for (int j = i + 1; j < N; j++) {
+                solution[i] -= matrix[i][j] * solution[j];
+            }
+        }
+        MPI_Bcast(&solution[i], 1, MPI_DOUBLE, i % size, MPI_COMM_WORLD);
+    }
+}
+
+int main(int argc, char **argv) {
+    int rank, size;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    double matrix[N][N + 1] = {
+        {2, 1, -1, 8},
+        {-3, -1, 2, -11},
+        {-2, 1, 2, -3}
+    };
+    double solution[N];
+
+    gaussian_elimination(matrix, rank, size);
+    back_substitution(matrix, solution, rank, size);
+
+    if (rank == 0) {
+        printf("Solution:\n");
+        for (int i = 0; i < N; i++) {
+            printf("x%d = %.2f\n", i + 1, solution[i]);
+        }
+    }
+
+    MPI_Finalize();
+    return 0;
+}
