@@ -1,0 +1,100 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+
+#define ARRAY_SIZE 1000000
+#define MAX_VAL 1000000
+
+void initialize_array(int *array, int size) {
+    srand(42);
+    for (int i = 0; i < size; i++) {
+        array[i] = rand() % MAX_VAL;
+    }
+}
+
+void swap(int *a, int *b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+int partition(int *array, int low, int high) {
+    int pivot = array[high];
+    int i = low - 1;
+    for (int j = low; j < high; j++) {
+        if (array[j] < pivot) {
+            i++;
+            swap(&array[i], &array[j]);
+        }
+    }
+    swap(&array[i + 1], &array[high]);
+    return i + 1;
+}
+
+void quick_sort_parallel(int *array, int low, int high, int depth) {
+    if (low < high) {
+        int pi = partition(array, low, high);
+        if (depth < 4) {
+            #pragma omp parallel sections
+            {
+                #pragma omp section
+                quick_sort_parallel(array, low, pi - 1, depth + 1);
+                
+                #pragma omp section
+                quick_sort_parallel(array, pi + 1, high, depth + 1);
+            }
+        } else {
+            quick_sort_parallel(array, low, pi - 1, depth + 1);
+            quick_sort_parallel(array, pi + 1, high, depth + 1);
+        }
+    }
+}
+
+void quick_sort(int *array, int low, int high) {
+    if (low < high) {
+        int pi = partition(array, low, high);
+        quick_sort(array, low, pi - 1);
+        quick_sort(array, pi + 1, high);
+    }
+}
+
+int validate_sort(int *array, int size) {
+    for (int i = 0; i < size - 1; i++) {
+        if (array[i] > array[i + 1]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int main() {
+    int *array = malloc(ARRAY_SIZE * sizeof(int));
+    int *array_copy = malloc(ARRAY_SIZE * sizeof(int));
+    double start, end;
+
+    initialize_array(array, ARRAY_SIZE);
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        array_copy[i] = array[i];
+    }
+
+    start = omp_get_wtime();
+    quick_sort(array_copy, 0, ARRAY_SIZE - 1);
+    end = omp_get_wtime();
+    printf("Sequential Quick Sort time: %f seconds\n", end - start);
+    printf("Sequential sort validated: %s\n", validate_sort(array_copy, ARRAY_SIZE) ? "Success" : "Failure");
+
+    start = omp_get_wtime();
+    #pragma omp parallel
+    {
+        #pragma omp single nowait
+        quick_sort_parallel(array, 0, ARRAY_SIZE - 1, 0);
+    }
+    end = omp_get_wtime();
+    printf("Parallel Quick Sort time: %f seconds\n", end - start);
+    printf("Parallel sort validated: %s\n", validate_sort(array, ARRAY_SIZE) ? "Success" : "Failure");
+
+    free(array);
+    free(array_copy);
+
+    return 0;
+}
