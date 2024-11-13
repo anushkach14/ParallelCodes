@@ -1,57 +1,65 @@
-#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
 #include <mpi.h>
 
 int main(int argc, char *argv[]) {
     int rank, size;
-    int n = 1000000;  // Size of the dataset (must be divisible by size)
-    double *array = nullptr;  // Original array (only allocated in the root process)
-    double local_sum = 0.0;   // Local sum for each process
-    int local_count = 0;      // Local count of elements for each process
-    double global_sum = 0.0;  // Global sum of all elements
-    int global_count = 0;     // Global count of all elements
+    int *data = NULL;
+    int *sub_data = NULL;
+    int data_size = 1000;  // Total number of elements in the dataset
+    int sub_data_size;     // Number of elements each process will handle
+    int local_sum = 0, global_sum = 0;
+    int local_count = 0, global_count = 0;
+    double global_avg;
+    int i;
 
-    MPI_Init(&argc, &argv);  // Initialize MPI
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);  // Get the rank of the current process
-    MPI_Comm_size(MPI_COMM_WORLD, &size);  // Get the number of processes
+    // Initialize MPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    // The root process (rank 0) initializes the array
+    // Size of sub-array each process will handle
+    sub_data_size = data_size / size;
+
+    // Root process initializes the data
     if (rank == 0) {
-        // Initialize the array with values
-        array = new double[n];  // Allocate memory for the array
-        for (int i = 0; i < n; i++) {
-            array[i] = i + 1.0;  // Example initialization (array values will be {1, 2, ..., n})
+        data = (int *)malloc(data_size * sizeof(int));
+        // Fill the data array with values (e.g., 1, 2, 3, ..., 1000)
+        for (i = 0; i < data_size; i++) {
+            data[i] = i + 1;
         }
     }
 
-    // Calculate how many elements each process will handle
-    int elements_per_process = n / size;
+    // Allocate space for each process to hold its part of the data
+    sub_data = (int *)malloc(sub_data_size * sizeof(int));
 
-    // Scatter the array from root to all processes
-    double *local_array = new double[elements_per_process];  // Local sub-array for each process
-    MPI_Scatter(array, elements_per_process, MPI_DOUBLE, local_array, elements_per_process, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    // Scatter the data to all processes
+    MPI_Scatter(data, sub_data_size, MPI_INT, sub_data, sub_data_size, MPI_INT, 0, MPI_COMM_WORLD);
 
-    // Each process computes its local sum and count
-    for (int i = 0; i < elements_per_process; i++) {
-        local_sum += local_array[i];
+    // Each process computes the local sum and count
+    for (i = 0; i < sub_data_size; i++) {
+        local_sum += sub_data[i];
+        local_count++;
     }
-    local_count = elements_per_process;
 
-    // Gather all local sums and counts at the root process
-    MPI_Reduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    // Use MPI_Reduce to combine the local sums and counts at the root process
+    MPI_Reduce(&local_sum, &global_sum, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&local_count, &global_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    // The root process computes and prints the global average
+    // Root process calculates the global average
     if (rank == 0) {
-        double global_average = global_sum / global_count;
-        std::cout << "Global Average: " << global_average << std::endl;
+        global_avg = (double)global_sum / global_count;
+        printf("Global Average: %f\n", global_avg);
+
+        // Clean up allocated memory
+        free(data);
     }
 
-    // Clean up the allocated memory
-    if (rank == 0) {
-        delete[] array;
-    }
-    delete[] local_array;
+    // Clean up process-specific memory
+    free(sub_data);
 
-    MPI_Finalize();  // Finalize MPI
+    // Finalize MPI
+    MPI_Finalize();
+
     return 0;
 }
