@@ -1,0 +1,57 @@
+#include <iostream>
+#include <mpi.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int n = 1000000;  // Size of the dataset (must be divisible by size)
+    double *array = nullptr;  // Original array (only allocated in the root process)
+    double local_sum = 0.0;   // Local sum for each process
+    int local_count = 0;      // Local count of elements for each process
+    double global_sum = 0.0;  // Global sum of all elements
+    int global_count = 0;     // Global count of all elements
+
+    MPI_Init(&argc, &argv);  // Initialize MPI
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);  // Get the rank of the current process
+    MPI_Comm_size(MPI_COMM_WORLD, &size);  // Get the number of processes
+
+    // The root process (rank 0) initializes the array
+    if (rank == 0) {
+        // Initialize the array with values
+        array = new double[n];  // Allocate memory for the array
+        for (int i = 0; i < n; i++) {
+            array[i] = i + 1.0;  // Example initialization (array values will be {1, 2, ..., n})
+        }
+    }
+
+    // Calculate how many elements each process will handle
+    int elements_per_process = n / size;
+
+    // Scatter the array from root to all processes
+    double *local_array = new double[elements_per_process];  // Local sub-array for each process
+    MPI_Scatter(array, elements_per_process, MPI_DOUBLE, local_array, elements_per_process, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    // Each process computes its local sum and count
+    for (int i = 0; i < elements_per_process; i++) {
+        local_sum += local_array[i];
+    }
+    local_count = elements_per_process;
+
+    // Gather all local sums and counts at the root process
+    MPI_Reduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&local_count, &global_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    // The root process computes and prints the global average
+    if (rank == 0) {
+        double global_average = global_sum / global_count;
+        std::cout << "Global Average: " << global_average << std::endl;
+    }
+
+    // Clean up the allocated memory
+    if (rank == 0) {
+        delete[] array;
+    }
+    delete[] local_array;
+
+    MPI_Finalize();  // Finalize MPI
+    return 0;
+}
