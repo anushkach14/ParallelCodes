@@ -1,0 +1,99 @@
+#include <iostream>
+#include <mpi.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int n = 16;  // Size of the array (should be divisible by size)
+    int array[n];  // Original array (only initialized in the root process)
+    int local_sum = 0;  // Local sum for each process
+    int global_sum = 0;  // Final sum gathered at the root process
+
+    MPI_Init(&argc, &argv);  // Initialize MPI
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);  // Get the rank of the current process
+    MPI_Comm_size(MPI_COMM_WORLD, &size);  // Get the number of processes
+
+    // The root process initializes the array
+    if (rank == 0) {
+        // Initialize the array with simple values
+        for (int i = 0; i < n; i++) {
+            array[i] = i + 1;  // Array values will be {1, 2, ..., 16}
+        }
+    }
+
+    // Calculate how many elements each process will handle
+    int elements_per_process = n / size;
+
+    // Scatter the array from root to all processes
+    int local_array[elements_per_process];  // Local sub-array for each process
+    MPI_Scatter(array, elements_per_process, MPI_INT, local_array, elements_per_process, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Each process computes its local sum
+    for (int i = 0; i < elements_per_process; i++) {
+        local_sum += local_array[i];
+    }
+
+    // Gather all local sums at the root process
+    MPI_Gather(&local_sum, 1, MPI_INT, &global_sum, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // The root process prints the final result
+    if (rank == 0) {
+        // Combine all local sums
+        for (int i = 1; i < size; i++) {
+            global_sum += global_sum;  // This is wrong as is. Should accumulate the local sums
+        }
+        std::cout << "Global Sum: " << global_sum << std::endl;
+    }
+
+    MPI_Finalize();  // Finalize MPI
+
+    return 0;
+}#include <iostream>
+#include <mpi.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int n = 16;  // Size of the array (should be divisible by size)
+    int array[n];  // Original array (only initialized in the root process)
+    int local_sum = 0;  // Local sum for each process
+    int global_sum = 0;  // Final sum gathered at the root process
+
+    MPI_Init(&argc, &argv);  // Initialize MPI
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);  // Get the rank of the current process
+    MPI_Comm_size(MPI_COMM_WORLD, &size);  // Get the number of processes
+
+    // The root process initializes the array
+    if (rank == 0) {
+        // Initialize the array with simple values
+        for (int i = 0; i < n; i++) {
+            array[i] = i + 1;  // Array values will be {1, 2, ..., 16}
+        }
+    }
+
+    // Calculate how many elements each process will handle
+    int elements_per_process = n / size;
+
+    // Scatter the array from root to all processes
+    int local_array[elements_per_process];  // Local sub-array for each process
+    MPI_Scatter(array, elements_per_process, MPI_INT, local_array, elements_per_process, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Each process computes its local sum
+    for (int i = 0; i < elements_per_process; i++) {
+        local_sum += local_array[i];
+    }
+
+    // Gather all local sums at the root process
+    MPI_Gather(&local_sum, 1, MPI_INT, &global_sum, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // The root process prints the final result
+    if (rank == 0) {
+        // Combine all local sums
+        for (int i = 1; i < size; i++) {
+            global_sum += global_sum;  // This is wrong as is. Should accumulate the local sums
+        }
+        std::cout << "Global Sum: " << global_sum << std::endl;
+    }
+
+    MPI_Finalize();  // Finalize MPI
+
+    return 0;
+}
