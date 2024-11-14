@@ -1,0 +1,80 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <mpi.h>
+#include <time.h>
+
+#define N 1024
+#define ROOT 0
+
+int partition(int *arr, int low, int high) {
+    int pivot = arr[high];
+    int i = low - 1;
+    for (int j = low; j < high; j++) {
+        if (arr[j] < pivot) {
+            i++;
+            int temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+    }
+    int temp = arr[i + 1];
+    arr[i + 1] = arr[high];
+    arr[high] = temp;
+    return i + 1;
+}
+
+void quick_sort(int *arr, int low, int high) {
+    if (low < high) {
+        int pi = partition(arr, low, high);
+        quick_sort(arr, low, pi - 1);
+        quick_sort(arr, pi + 1, high);
+    }
+}
+
+void mpi_quick_sort(int *arr, int n, int rank, int size) {
+    int local_n = n / size;
+    int *local_arr = (int *)malloc(local_n * sizeof(int));
+
+    MPI_Scatter(arr, local_n, MPI_INT, local_arr, local_n, MPI_INT, ROOT, MPI_COMM_WORLD);
+    quick_sort(local_arr, 0, local_n - 1);
+    MPI_Gather(local_arr, local_n, MPI_INT, arr, local_n, MPI_INT, ROOT, MPI_COMM_WORLD);
+
+    free(local_arr);
+}
+
+int main(int argc, char *argv[]) {
+    int *arr = (int *)malloc(N * sizeof(int));
+    int rank, size;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    srand(time(0));
+
+    if (rank == ROOT) {
+        for (int i = 0; i < N; i++) {
+            arr[i] = rand() % 1000;
+        }
+
+        printf("Unsorted array (first 10 elements):\n");
+        for (int i = 0; i < 10; i++) {
+            printf("%d ", arr[i]);
+        }
+        printf("\n");
+    }
+
+    mpi_quick_sort(arr, N, rank, size);
+
+    if (rank == ROOT) {
+        printf("Sorted array (first 10 elements):\n");
+        for (int i = 0; i < 10; i++) {
+            printf("%d ", arr[i]);
+        }
+        printf("\n");
+    }
+
+    free(arr);
+    MPI_Finalize();
+    return 0;
+}
