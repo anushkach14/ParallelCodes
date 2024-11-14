@@ -1,0 +1,28 @@
+#include <stdio.h>
+#include <omp.h>
+
+int main() {
+    int n = 1000; // Size of the array
+    int arr[n];
+    int last_index;
+
+    // Initialize the array with consecutive values for demonstration
+    for (int i = 0; i < n; i++) {
+        arr[i] = i + 1;
+    }
+
+    // Define chunk size (portion of the array each thread will handle)
+    int chunk_size = n / omp_get_max_threads();
+
+    // Parallel doubling of array values
+    #pragma omp parallel for firstprivate(chunk_size) lastprivate(last_index) nowait
+    for (int i = 0; i < n; i++) {
+        arr[i] *= 2;           // Double the value at index i
+        last_index = i;        // Capture the last processed index for each thread
+    }
+
+    // Print the last processed index for demonstration
+    printf("Last processed index by any thread: %d\n", last_index);
+
+    return 0;
+}
