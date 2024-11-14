@@ -1,0 +1,101 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <mpi.h>
+#include <time.h>
+
+#define N 1024  // Size of the array
+#define ROOT 0  // Rank of the root process
+
+// Bitonic Compare: Compare elements and swap if they are out of order
+void bitonic_compare(int *arr, int i, int j, int dir) {
+    if (dir == (arr[i] > arr[j])) {
+        int temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+}
+
+// Bitonic Merge: Merges two sorted sub-arrays in a bitonic fashion
+void bitonic_merge(int *arr, int low, int cnt, int dir) {
+    if (cnt > 1) {
+        int k = cnt / 2;
+        for (int i = low; i < low + k; i++) {
+            bitonic_compare(arr, i, i + k, dir);
+        }
+        bitonic_merge(arr, low, k, dir);
+        bitonic_merge(arr, low + k, k, dir);
+    }
+}
+
+// Bitonic Sort: Recursively sorts the array
+void bitonic_sort(int *arr, int low, int cnt, int dir) {
+    if (cnt > 1) {
+        int k = cnt / 2;
+        bitonic_sort(arr, low, k, 1);  // Sort in ascending order
+        bitonic_sort(arr, low + k, k, 0);  // Sort in descending order
+        bitonic_merge(arr, low, cnt, dir);  // Merge the results
+    }
+}
+
+// Function to initialize the array with random values
+void initialize_array(int *arr, int n) {
+    for (int i = 0; i < n; i++) {
+        arr[i] = rand() % 1000;  // Random values between 0 and 999
+    }
+}
+
+// Function to print the array (first 10 elements)
+void print_array(int *arr, int n) {
+    for (int i = 0; i < 10 && i < n; i++) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+}
+
+// MPI-based Bitonic Sort
+void mpi_bitonic_sort(int *arr, int n, int rank, int size) {
+    int local_n = n / size;
+    int *local_arr = (int *)malloc(local_n * sizeof(int));
+
+    // Scatter the array across all processes
+    MPI_Scatter(arr, local_n, MPI_INT, local_arr, local_n, MPI_INT, ROOT, MPI_COMM_WORLD);
+
+    // Each process performs bitonic sort on its local data
+    bitonic_sort(local_arr, 0, local_n, 1);
+
+    // Gather the results back into the root process
+    MPI_Gather(local_arr, local_n, MPI_INT, arr, local_n, MPI_INT, ROOT, MPI_COMM_WORLD);
+
+    free(local_arr);
+}
+
+int main(int argc, char *argv[]) {
+    int *arr = (int *)malloc(N * sizeof(int));
+    int rank, size;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    srand(time(0));
+
+    // Initialize array on the root process
+    if (rank == ROOT) {
+        initialize_array(arr, N);
+        printf("Unsorted array (first 10 elements):\n");
+        print_array(arr, N);
+    }
+
+    // Perform Bitonic Sort using MPI
+    mpi_bitonic_sort(arr, N, rank, size);
+
+    // Print the sorted array on the root process
+    if (rank == ROOT) {
+        printf("Sorted array (first 10 elements):\n");
+        print_array(arr, N);
+    }
+
+    free(arr);
+    MPI_Finalize();
+    return 0;
+}
